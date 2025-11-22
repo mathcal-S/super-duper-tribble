@@ -2,7 +2,7 @@
 import os
 import json
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional # <-- FIX APPLIED HERE
 
 # --- Rich Import & Fallback ---
 try:
@@ -82,7 +82,7 @@ def check_vars(vars_list: List[str]) -> Dict:
             results[var] = Text(status, style="bold bright_green")
     return results
 
-def load_json_file(file_path: str) -> Dict:
+def load_json_file(file_path: str) -> Optional[Dict]: # Used Optional here
     """Loads a JSON file and returns data or None if missing/corrupt."""
     if not os.path.exists(file_path):
         return None
@@ -205,15 +205,15 @@ def main():
     animated_banner = Align.center(Text.from_markup("[blink bold green]▄▄▄▄▄ WARPGATE: ESQET AGI ▄▄▄▄▄[/]", justify="center"))
     
     console.print(animated_banner)
-    
+
     # 1. Load Environment
     dotenv_loaded, loaded_path = load_environment()
-    
+
     # 2. Check variables and JSON files
     results = check_vars(EXPECTED_VARS)
     apikey_data = load_json_file(APIKEY_PATH)
     credentials_data = load_json_file(CREDENTIALS_PATH)
-    
+
     # 3. Render Layout
     layout = create_layout()
     layout["logo_section"].update(render_logo())
@@ -230,5 +230,4 @@ if __name__ == "__main__":
     for step in track(range(25), description="[blink magenta]WARPING... Initiating AGI Auditor[/blink magenta]"):
         time.sleep(0.01)
     main()
-
 

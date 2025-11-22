@@ -1,0 +1,9 @@
+[submodule "modules/wunjo-generator"]
+	path = modules/wunjo-generator
+	url = https://github.com/wladradchenko/wunjo.wladradchenko.ru.git
+[submodule "modules/python-helpers"]
+	path = modules/python-helpers
+	url = https://github.com/Textualize/rich.git
+[submodule "modules/web3-boilerplates"]
+	path = modules/web3-boilerplates
+	url = https://github.com/gakonst/ethers-rs.git
