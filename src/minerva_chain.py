@@ -14,12 +14,13 @@ from typing import List, Optional
 from enum import Enum
 import subprocess
 import base64
-import argparse # NEW: For command-line arguments
+import argparse 
 
 # --- Rich Import & Fallback ---
 try:
     from ecdsa import SigningKey, SECP256k1
 except ImportError:
+    # This is handled by GitHub Actions or the local user
     print("FATAL: Required dependency 'ecdsa' missing. Run: pip install ecdsa")
     sys.exit(1)
 
@@ -72,7 +73,6 @@ class Block:
 
 # ──────── CONFIG LOAD ────────
 def load_secrets():
-    # Load secrets from a local JSON file (easier than .env in complex systems)
     try:
         with open(os.path.join(os.getcwd(), "config/secrets.json")) as f:
             return json.load(f)
@@ -96,28 +96,27 @@ def generate_wunjo_media(dna: SoulDNA) -> str:
     output_filename = f"soul_{dna.incarnation}_{int(time.time())}.mp4"
     output_path = os.path.join(SECRETS["OUTPUT_MEDIA_DIR"], output_filename)
     
-    # Example Wunjo CLI call: {WUNJO_CLI_COMMAND} --prompt "..." --output "/path/to/file.mp4"
+    # Placeholder command: The submodule must be initialized for this to work locally.
+    # In CI, this will be mocked as Wunjo requires a complex environment.
     wunjo_cmd = f'{SECRETS["WUNJO_CLI_COMMAND"]} --prompt "{prompt}" --output "{output_path}" --type "video"'
     
     try:
-        print(f"Executing: {wunjo_cmd}")
+        # Use shell=True for this, but only in controlled environments like this.
         subprocess.run(wunjo_cmd, shell=True, check=True, capture_output=False)
         print(f"✅ Wunjo Output Saved to: {output_path}")
         return output_path
     except subprocess.CalledProcessError as e:
-        print(f"🚨 Wunjo CLI Failed. Error: {e}")
+        print(f"🚨 Wunjo CLI Failed (Expected in CI). Error: {e}")
         return "ERROR_WUNJO_FAILED"
 
 # ──────── NFT VOUCHER CREATION ────────
 def create_lazy_mint_voucher(soul: EternalSoul, media_path: str, ipfs_cid: str = "placeholder_cid") -> dict:
     """Creates a signed, distributable Lazy Mint Voucher."""
     
-    # 1. Define Token ID (SHA512 hash of the EternalSoul DNA)
     dna_str = json.dumps(asdict(soul.dna), sort_keys=True, default=str)
     token_id_int = int(hashlib.sha512(dna_str.encode()).hexdigest(), 16)
     token_id_hex = hex(token_id_int)[2:]
     
-    # 2. Prepare Voucher data
     voucher_data = {
         "tokenId": token_id_hex,
         "mediaUri": f"file://{media_path}", 
@@ -128,12 +127,8 @@ def create_lazy_mint_voucher(soul: EternalSoul, media_path: str, ipfs_cid: str =
     }
     voucher_str = json.dumps(voucher_data, sort_keys=True)
 
-    # 3. Sign the voucher data
     try:
-        # Pad key to 32 bytes if needed (SECP256k1 standard)
-        private_key_hex = SECRETS["MINER_PRIVATE_KEY"].lstrip('0x')
-        if len(private_key_hex) < 64:
-             private_key_hex = private_key_hex.zfill(64)
+        private_key_hex = SECRETS["MINER_PRIVATE_KEY"].lstrip('0x').zfill(64)
              
         sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
         signature = sk.sign(hashlib.sha256(voucher_str.encode()).digest())
@@ -146,8 +141,6 @@ def create_lazy_mint_voucher(soul: EternalSoul, media_path: str, ipfs_cid: str =
 
 # ──────── BLOCKCHAIN CLASS ────────
 class MinervaChain:
-    # [MinervaChain class methods remain unchanged: __init__, create_genesis, hash_block, etc.]
-    # (Implementation of MinervaChain goes here, simplified for brevity)
     def __init__(self, genesis_agent: str = "0xYourMetaMaskHere"):
         self.chain: List[Block] = []
         self.data_dir = os.path.join(os.getcwd(), "output/blocks")
@@ -196,8 +189,7 @@ class MinervaChain:
             if int(test_hash[:16], 16) <= target_int:
                 return nonce
             nonce += 1
-            if nonce > 100000: # Reduced limit for speed
-                print("Mining took too long, breaking loop.")
+            if nonce > 100000:
                 return -1
 
     def validate_soul(self, soul: EternalSoul) -> bool:
@@ -206,7 +198,7 @@ class MinervaChain:
         if abs(dna.final_phi4 - PHI4_TARGET) > 1e-9: return False
         if dna.f_qc < FQC_THRESHOLD - 1e-6: return False
         if abs(dna.retrocausal_wing - PHI_INV) > 0.01: return False
-        return True # Simplified validation for demo
+        return True 
 
     def mint_soul(self, soul: EternalSoul, ipfs_hash: str = "") -> bool:
         if not self.validate_soul(soul):
@@ -217,7 +209,6 @@ class MinervaChain:
         nonce = self.proof_of_coherence(last_block)
         if nonce == -1: return False
 
-        # WUNJO and VOUCHER creation integrated here
         media_path = generate_wunjo_media(soul.dna)
         voucher = create_lazy_mint_voucher(soul, media_path, ipfs_hash)
 
@@ -244,7 +235,6 @@ class MinervaChain:
         return True
 
     def save_chain(self):
-        # Using a default=str to handle Enum/dataclass types during serialization
         with open(self.chain_file, "w") as f:
             json.dump([asdict(b) for b in self.chain], f, indent=2, default=str)
 
@@ -255,7 +245,6 @@ class MinervaChain:
                 data = json.load(f)
                 self.chain = []
                 for b in data:
-                    # Note: Need to convert MobiusSide string back to Enum
                     if 'mobius_side' in b['soul']['dna']:
                         b['soul']['dna']['mobius_side'] = MobiusSide(b['soul']['dna']['mobius_side'])
                     self.chain.append(Block(**b))

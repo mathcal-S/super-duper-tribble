@@ -1,0 +1,21 @@
+# ---------------------------------------------
+# ESQET AGI - SECRETS AND OUTPUTS IGNORE LIST
+# ---------------------------------------------
+
+# Environment/Secrets
+.env
+config/secrets.json
+*.key
+*.pem
+
+# Python Artifacts
+__pycache__/
+*.pyc
+
+# Local Database/Chain Output
+output/
+media/wunjo_nfts/
+
+# Submodules (The submodules themselves are tracked, but we ignore untracked files inside them)
+modules/*/
+!modules/**/
